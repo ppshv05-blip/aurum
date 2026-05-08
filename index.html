@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GoldVault – ขายหุ้นทองคำ</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" class="overlay-screen active">
+  <div class="login-bg">
+    <div class="gold-particles" id="particles"></div>
+    <div class="login-card">
+      <div class="login-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">GoldVault</span>
+      </div>
+      <p class="login-sub">ระบบซื้อขายหุ้นทองคำดิจิทัล</p>
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="switchTab('login')">เข้าสู่ระบบ</button>
+        <button class="tab-btn" onclick="switchTab('register')">สมัครสมาชิก</button>
+      </div>
+      <!-- Login Form -->
+      <div id="loginForm">
+        <div class="input-group">
+          <label>อีเมล</label>
+          <input type="email" id="loginEmail" placeholder="gold@example.com"/>
+        </div>
+        <div class="input-group">
+          <label>รหัสผ่าน</label>
+          <input type="password" id="loginPassword" placeholder="••••••••"/>
+        </div>
+        <div class="remember-row">
+          <label><input type="checkbox"/> จำรหัสผ่าน</label>
+          <a href="#">ลืมรหัสผ่าน?</a>
+        </div>
+        <button class="btn-gold" onclick="doLogin()">เข้าสู่ระบบ</button>
+        <div id="loginError" class="error-msg"></div>
+        <div class="demo-hint">Demo: <b>admin@gold.com</b> / <b>1234</b> (ผู้ดูแล) หรือ <b>user@gold.com</b> / <b>1234</b> (ผู้ใช้)</div>
+      </div>
+      <!-- Register Form -->
+      <div id="registerForm" style="display:none">
+        <div class="input-group">
+          <label>ชื่อ-นามสกุล</label>
+          <input type="text" id="regName" placeholder="ชื่อ นามสกุล"/>
+        </div>
+        <div class="input-group">
+          <label>อีเมล</label>
+          <input type="email" id="regEmail" placeholder="gold@example.com"/>
+        </div>
+        <div class="input-group">
+          <label>รหัสผ่าน</label>
+          <input type="password" id="regPass" placeholder="••••••••"/>
+        </div>
+        <button class="btn-gold" onclick="doRegister()">สมัครสมาชิก</button>
+        <div id="regError" class="error-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ADMIN PANEL ========== -->
+<div id="adminPanel" class="overlay-screen">
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="admin-logo">⬡ <span>GoldVault Admin</span></div>
+      <nav class="admin-nav">
+        <a class="admin-link active" onclick="showAdminTab('dashboard')">📊 แดชบอร์ด</a>
+        <a class="admin-link" onclick="showAdminTab('users')">👥 จัดการผู้ใช้</a>
+        <a class="admin-link" onclick="showAdminTab('transactions')">💳 รายการฝาก/ถอน</a>
+        <a class="admin-link" onclick="showAdminTab('trades')">📈 รายการเทรด</a>
+        <a class="admin-link" onclick="showAdminTab('goldprice')">🏅 ตั้งค่าราคาทอง</a>
+        <a class="admin-link logout-btn" onclick="doLogout()">🚪 ออกจากระบบ</a>
+      </nav>
+    </aside>
+    <main class="admin-main">
+      <!-- Dashboard -->
+      <div id="admin-dashboard" class="admin-tab active">
+        <h1 class="page-title">แดชบอร์ดภาพรวม</h1>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-info"><span id="totalUsers">0</span><label>ผู้ใช้ทั้งหมด</label></div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-info"><span id="totalDeposits">0</span><label>ยอดฝากรวม (บาท)</label></div></div>
+          <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-info"><span id="totalTrades">0</span><label>รายการเทรดทั้งหมด</label></div></div>
+          <div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-info"><span id="currentGoldPrice">0</span><label>ราคาทองปัจจุบัน (บาท/กรัม)</label></div></div>
+        </div>
+        <div class="admin-chart-wrap">
+          <h2>ปริมาณการซื้อขายรายวัน</h2>
+          <canvas id="adminChart" height="100"></canvas>
+        </div>
+      </div>
+      <!-- Users -->
+      <div id="admin-users" class="admin-tab">
+        <h1 class="page-title">จัดการผู้ใช้</h1>
+        <div class="table-wrap">
+          <table class="data-table" id="usersTable">
+            <thead><tr><th>#</th><th>ชื่อ</th><th>อีเมล</th><th>ยอดเงิน</th><th>ทอง (กรัม)</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Transactions -->
+      <div id="admin-transactions" class="admin-tab">
+        <h1 class="page-title">รายการฝาก/ถอน</h1>
+        <div class="filter-bar">
+          <select id="txFilter" onchange="renderAdminTx()">
+            <option value="all">ทั้งหมด</option>
+            <option value="deposit">ฝากเงิน</option>
+            <option value="withdraw">ถอนเงิน</option>
+            <option value="pending">รอดำเนินการ</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>ผู้ใช้</th><th>ประเภท</th><th>จำนวน (บาท)</th><th>วันที่</th><th>สถานะ</th><th>อนุมัติ</th></tr></thead>
+            <tbody id="txTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Trades -->
+      <div id="admin-trades" class="admin-tab">
+        <h1 class="page-title">รายการเทรดทั้งหมด</h1>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>ผู้ใช้</th><th>ประเภท</th><th>ปริมาณ (กรัม)</th><th>ราคา/กรัม</th><th>มูลค่ารวม</th><th>วันที่</th></tr></thead>
+            <tbody id="tradesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Gold Price -->
+      <div id="admin-goldprice" class="admin-tab">
+        <h1 class="page-title">ตั้งค่าราคาทองคำ</h1>
+        <div class="settings-card">
+          <div class="input-group"><label>ราคาทองคำ (บาท/กรัม)</label><input type="number" id="adminGoldInput" placeholder="เช่น 3200"/></div>
+          <div class="input-group"><label>ราคาซื้อคืน (% ของราคาทอง)</label><input type="number" id="adminBuybackPct" placeholder="เช่น 98" min="1" max="100"/></div>
+          <button class="btn-gold" onclick="updateGoldPrice()">บันทึกราคา</button>
+          <div id="priceUpdateMsg" class="success-msg"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ========== USER APP ========== -->
+<div id="userApp" class="overlay-screen">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">⬡ <span>GoldVault</span></div>
+    <nav class="sidebar-nav">
+      <a class="nav-link active" data-page="home" onclick="showPage('home')"><span class="nav-icon">🏠</span> หน้าหลัก</a>
+      <a class="nav-link" data-page="trade" onclick="showPage('trade')"><span class="nav-icon">📈</span> เทรด</a>
+      <a class="nav-link" data-page="wallet" onclick="showPage('wallet')"><span class="nav-icon">💳</span> ฝาก/ถอน</a>
+      <a class="nav-link" data-page="account" onclick="showPage('account')"><span class="nav-icon">👤</span> บัญชีของฉัน</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="btn-logout" onclick="doLogout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-gold">
+        <span class="gold-live-dot"></span>
+        <span>ทอง: <strong id="goldPriceLive">฿3,190</strong>/กรัม</span>
+      </div>
+      <div class="topbar-user">
+        <span id="topbarUsername">ผู้ใช้</span>
+        <div class="avatar" id="topbarAvatar">U</div>
+      </div>
+    </header>
+
+    <!-- HOME PAGE -->
+    <section id="page-home" class="page active">
+      <div class="page-header">
+        <h1>ยินดีต้อนรับ, <span id="welcomeName"></span> 👋</h1>
+        <p>ติดตามราคาทองคำและพอร์ตการลงทุนของคุณ</p>
+      </div>
+      <div class="portfolio-strip">
+        <div class="port-card accent">
+          <label>ยอดเงินสด</label>
+          <strong id="cashBalance">฿0</strong>
+        </div>
+        <div class="port-card">
+          <label>ทองคำที่ถือ</label>
+          <strong id="goldHeld">0 กรัม</strong>
+        </div>
+        <div class="port-card">
+          <label>มูลค่าทอง</label>
+          <strong id="goldValue">฿0</strong>
+        </div>
+        <div class="port-card">
+          <label>พอร์ตรวม</label>
+          <strong id="totalPortfolio">฿0</strong>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <div class="chart-header">
+          <h2>ราคาทองคำ (บาท/กรัม)</h2>
+          <div class="time-tabs">
+            <button class="time-tab active" onclick="setTimeframe('1D',this)">1D</button>
+            <button class="time-tab" onclick="setTimeframe('1W',this)">1W</button>
+            <button class="time-tab" onclick="setTimeframe('1M',this)">1M</button>
+            <button class="time-tab" onclick="setTimeframe('3M',this)">3M</button>
+          </div>
+        </div>
+        <canvas id="goldChart" height="90"></canvas>
+      </div>
+
+      <div class="news-section">
+        <h2>ข่าวทองคำล่าสุด</h2>
+        <div class="news-grid">
+          <div class="news-card"><span class="news-tag buy">ขึ้น</span><p>ทองคำโลกพุ่งสูงสุดในรอบ 3 เดือน หลังธนาคารกลางสหรัฐส่งสัญญาณลดดอกเบี้ย</p><small>05 พ.ค. 2026</small></div>
+          <div class="news-card"><span class="news-tag neutral">ข่าว</span><p>นักลงทุนเพิ่มสัดส่วนทองคำในพอร์ตรับมือความผันผวนตลาดหุ้น</p><small>04 พ.ค. 2026</small></div>
+          <div class="news-card"><span class="news-tag sell">ลง</span><p>ดอลลาร์แข็งค่ากดดันราคาทองคำในช่วงเช้า ก่อนฟื้นตัวช่วงบ่าย</p><small>03 พ.ค. 2026</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRADE PAGE -->
+    <section id="page-trade" class="page">
+      <div class="page-header">
+        <h1>ซื้อ / ขายทองคำ</h1>
+        <p>ราคาอัปเดตแบบ Real-time</p>
+      </div>
+
+      <div class="trade-layout">
+        <div class="trade-panel">
+          <div class="trade-tabs">
+            <button class="trade-tab active buy-tab" onclick="setTradeType('buy',this)">ซื้อทอง</button>
+            <button class="trade-tab sell-tab" onclick="setTradeType('sell',this)">ขายทอง</button>
+          </div>
+          <div class="price-display">
+            <div class="price-item">
+              <label>ราคาซื้อ</label>
+              <strong id="buyPrice" class="price-buy">฿0</strong>
+            </div>
+            <div class="price-divider"></div>
+            <div class="price-item">
+              <label>ราคาขาย (รับคืน)</label>
+              <strong id="sellPrice" class="price-sell">฿0</strong>
+            </div>
+          </div>
+          <div class="input-group">
+            <label id="tradeAmountLabel">จำนวนทอง (กรัม)</label>
+            <div class="input-row">
+              <input type="number" id="tradeAmount" placeholder="0.00" step="0.01" oninput="calcTrade()"/>
+              <span class="input-unit">กรัม</span>
+            </div>
+          </div>
+          <div class="quick-amounts">
+            <button onclick="setTradeGrams(0.5)">0.5g</button>
+            <button onclick="setTradeGrams(1)">1g</button>
+            <button onclick="setTradeGrams(5)">5g</button>
+            <button onclick="setTradeGrams(10)">10g</button>
+          </div>
+          <div class="trade-summary">
+            <div class="summary-row"><span>จำนวน</span><span id="summaryGrams">0 กรัม</span></div>
+            <div class="summary-row"><span>ราคา/กรัม</span><span id="summaryUnitPrice">฿0</span></div>
+            <div class="summary-row total-row"><span>มูลค่ารวม</span><span id="summaryTotal">฿0</span></div>
+          </div>
+          <button class="btn-trade" id="tradeBtn" onclick="executeTrade()">ซื้อทอง</button>
+          <div id="tradeMsg" class="success-msg"></div>
+        </div>
+
+        <div class="trade-right">
+          <div class="mini-chart-wrap">
+            <h3>กราฟราคา (24 ชม.)</h3>
+            <canvas id="tradeChart" height="140"></canvas>
+          </div>
+          <div class="trade-history-wrap">
+            <h3>ประวัติการเทรดของคุณ</h3>
+            <div class="history-list" id="tradeHistoryList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WALLET PAGE -->
+    <section id="page-wallet" class="page">
+      <div class="page-header">
+        <h1>ฝาก / ถอนเงิน</h1>
+        <p>จัดการเงินในบัญชีของคุณ</p>
+      </div>
+
+      <div class="wallet-layout">
+        <div class="wallet-panel">
+          <div class="wallet-tabs">
+            <button class="wallet-tab active" onclick="setWalletMode('deposit',this)">💰 ฝากเงิน</button>
+            <button class="wallet-tab" onclick="setWalletMode('withdraw',this)">🏧 ถอนเงิน</button>
+          </div>
+
+          <div id="depositForm">
+            <div class="balance-show">ยอดเงินปัจจุบัน: <strong id="walletCash">฿0</strong></div>
+            <div class="input-group">
+              <label>จำนวนเงินที่ต้องการฝาก (บาท)</label>
+              <input type="number" id="depositAmount" placeholder="ขั้นต่ำ 100 บาท" min="100"/>
+            </div>
+            <div class="input-group">
+              <label>ช่องทางการชำระเงิน</label>
+              <select id="depositMethod">
+                <option value="bank">โอนผ่านธนาคาร</option>
+                <option value="promptpay">PromptPay</option>
+                <option value="card">บัตรเครดิต/เดบิต</option>
+              </select>
+            </div>
+            <div id="bankInfo" class="payment-info">
+              <p>โอนเงินมาที่บัญชี:</p>
+              <p><b>ธนาคารกสิกรไทย</b> เลขบัญชี: <b>123-4-56789-0</b></p>
+              <p>ชื่อบัญชี: <b>บริษัท โกลด์วอลต์ จำกัด</b></p>
+            </div>
+            <div class="input-group">
+              <label>อ้างอิงการโอน / หลักฐาน</label>
+              <input type="text" id="depositRef" placeholder="เลขที่อ้างอิง / ชื่อผู้โอน"/>
+            </div>
+            <button class="btn-gold" onclick="submitDeposit()">ส่งคำขอฝากเงิน</button>
+            <div id="depositMsg" class="success-msg"></div>
+          </div>
+
+          <div id="withdrawForm" style="display:none">
+            <div class="balance-show">ยอดเงินที่ถอนได้: <strong id="walletCash2">฿0</strong></div>
+            <div class="input-group">
+              <label>จำนวนเงินที่ต้องการถอน (บาท)</label>
+              <input type="number" id="withdrawAmount" placeholder="ขั้นต่ำ 500 บาท" min="500"/>
+            </div>
+            <div class="input-group">
+              <label>ธนาคาร</label>
+              <select id="withdrawBank">
+                <option>กสิกรไทย</option><option>กรุงเทพ</option><option>ไทยพาณิชย์</option>
+                <option>กรุงไทย</option><option>ทหารไทย</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>เลขบัญชี</label>
+              <input type="text" id="withdrawAcct" placeholder="XXX-X-XXXXX-X"/>
+            </div>
+            <div class="input-group">
+              <label>ชื่อเจ้าของบัญชี</label>
+              <input type="text" id="withdrawName" placeholder="ชื่อ-นามสกุล"/>
+            </div>
+            <button class="btn-gold" onclick="submitWithdraw()">ส่งคำขอถอนเงิน</button>
+            <div id="withdrawMsg" class="success-msg"></div>
+          </div>
+        </div>
+
+        <div class="wallet-history-wrap">
+          <h3>ประวัติฝาก/ถอน</h3>
+          <div class="history-list" id="walletHistoryList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACCOUNT PAGE -->
+    <section id="page-account" class="page">
+      <div class="page-header">
+        <h1>บัญชีของฉัน</h1>
+        <p>ตั้งค่าและข้อมูลส่วนตัว</p>
+      </div>
+
+      <div class="account-layout">
+        <div class="account-sidebar-nav">
+          <button class="acc-nav active" onclick="showAccTab('profile')">👤 ข้อมูลส่วนตัว</button>
+          <button class="acc-nav" onclick="showAccTab('security')">🔒 ความปลอดภัย</button>
+          <button class="acc-nav" onclick="showAccTab('notify')">🔔 การแจ้งเตือน</button>
+          <button class="acc-nav" onclick="showAccTab('verify')">✅ ยืนยันตัวตน</button>
+        </div>
+
+        <div class="account-content">
+          <!-- Profile -->
+          <div id="acc-profile" class="acc-tab active">
+            <h2>ข้อมูลส่วนตัว</h2>
+            <div class="avatar-upload">
+              <div class="big-avatar" id="bigAvatar">U</div>
+              <button class="btn-outline" onclick="document.getElementById('avatarFile').click()">เปลี่ยนรูปโปรไฟล์</button>
+              <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="changeAvatar(event)"/>
+            </div>
+            <div class="input-group"><label>ชื่อ-นามสกุล</label><input type="text" id="profileName"/></div>
+            <div class="input-group"><label>อีเมล</label><input type="email" id="profileEmail" readonly/></div>
+            <div class="input-group"><label>เบอร์โทรศัพท์</label><input type="tel" id="profilePhone" placeholder="08X-XXX-XXXX"/></div>
+            <div class="input-group"><label>ที่อยู่</label><textarea id="profileAddress" rows="3" placeholder="ที่อยู่สำหรับจัดส่งเอกสาร"></textarea></div>
+            <button class="btn-gold" onclick="saveProfile()">บันทึกข้อมูล</button>
+            <div id="profileMsg" class="success-msg"></div>
+          </div>
+          <!-- Security -->
+          <div id="acc-security" class="acc-tab">
+            <h2>ความปลอดภัย</h2>
+            <div class="input-group"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="oldPass" placeholder="••••••••"/></div>
+            <div class="input-group"><label>รหัสผ่านใหม่</label><input type="password" id="newPass" placeholder="••••••••"/></div>
+            <div class="input-group"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="confirmPass" placeholder="••••••••"/></div>
+            <button class="btn-gold" onclick="changePassword()">เปลี่ยนรหัสผ่าน</button>
+            <div id="secMsg" class="success-msg"></div>
+            <hr class="divider"/>
+            <h3>การยืนยันสองขั้นตอน (2FA)</h3>
+            <div class="toggle-row">
+              <span>เปิดใช้งาน 2FA ผ่าน SMS</span>
+              <label class="toggle"><input type="checkbox" id="toggle2fa" onchange="toggle2FA()"/><span class="slider"></span></label>
+            </div>
+            <div id="secMsg2" class="success-msg"></div>
+          </div>
+          <!-- Notifications -->
+          <div id="acc-notify" class="acc-tab">
+            <h2>การแจ้งเตือน</h2>
+            <div class="toggle-row"><span>แจ้งเตือนเมื่อราคาทองขึ้น/ลง 1%</span><label class="toggle"><input type="checkbox" checked/><span class="slider"></span></label></div>
+            <div class="toggle-row"><span>แจ้งเตือนเมื่อมีการฝาก/ถอน</span><label class="toggle"><input type="checkbox" checked/><span class="slider"></span></label></div>
+            <div class="toggle-row"><span>รับข่าวสารทองคำทาง Email</span><label class="toggle"><input type="checkbox"/><span class="slider"></span></label></div>
+            <div class="toggle-row"><span>แจ้งเตือน Push Notification</span><label class="toggle"><input type="checkbox" checked/><span class="slider"></span></label></div>
+            <div class="input-group" style="margin-top:20px"><label>ราคาแจ้งเตือนทอง (บาท/กรัม)</label><input type="number" id="priceAlert" placeholder="เช่น 3500"/></div>
+            <button class="btn-gold" onclick="saveNotify()">บันทึกการตั้งค่า</button>
+            <div id="notifyMsg" class="success-msg"></div>
+          </div>
+          <!-- Verify -->
+          <div id="acc-verify" class="acc-tab">
+            <h2>ยืนยันตัวตน (KYC)</h2>
+            <div class="kyc-status" id="kycStatus">
+              <div class="kyc-badge pending">⏳ รอการยืนยัน</div>
+              <p>กรุณาอัปโหลดเอกสารเพื่อยืนยันตัวตน</p>
+            </div>
+            <div class="input-group"><label>ประเภทเอกสาร</label>
+              <select><option>บัตรประชาชน</option><option>หนังสือเดินทาง</option><option>ใบขับขี่</option></select>
+            </div>
+            <div class="input-group"><label>อัปโหลดด้านหน้า</label><input type="file" accept="image/*"/></div>
+            <div class="input-group"><label>อัปโหลดด้านหลัง</label><input type="file" accept="image/*"/></div>
+            <button class="btn-gold" onclick="submitKYC()">ส่งเอกสาร</button>
+            <div id="kycMsg" class="success-msg"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
